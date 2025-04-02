@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>台灣移民到世界各地人口桑基圖 - 互動版</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 26px;
+      font-family: 'Microsoft JhengHei', Arial, sans-serif;
+      background-color: #f8f9fa;
+    }
+    .title {
+      text-align: center;
+      font-size: 33px;
+      margin-bottom: 10px;
+      font-weight: bold;
+      color: #466983;
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 22px;
+      margin-bottom: 30px;
+      color: #367f87;
+    }
+    #canvas-container {
+      display: flex;
+      justify-content: center;
+    }
+    .controls {
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 15px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .slider-container {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .slider-label {
+      width: 100px;
+      font-size: 14px;
+    }
+    .year-display {
+      width: 80px;
+      text-align: center;
+      font-weight: bold;
+    }
+    .instructions {
+      font-size: 14px;
+      margin-top: 10px;
+      color: #CE3D32;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">台灣人最常選擇的移民國家</div>
+  <div class="subtitle"> 2015-2024年移民趨勢【Sankey Diagram】</div>
+  <div id="canvas-container"></div>
+  <div class="controls">
+    <div class="slider-container">
+      <div class="slider-label">年份選擇：</div>
+      <div id="year-slider"></div>
+      <div class="year-display" id="year-display">2024</div>
+    </div>
+    <div class="instructions">提示 1：將滑鼠懸停在流線或節點上可查看詳細資訊。提示 2：拖動時間軸滑桿可查看不同年份的移民數據。</div>
+  </div>
+  <script>
+
+   let yearSlider;
+    let currentYear = 2024;
+    let hoveredLink = null;
+    let hoveredNode = null;
+    let sankeyData = {};
+    let linkElements = [];
+    let sourceElements = [];
+    let targetElements = [];
+    let totalMigration = 0;
+    let maxLinkValue = 0;
+    let sankeyWidth = 900;
+    let sankeyHeight = 500;
+    let tooltipVisible = false;
+    let tooltipText = "";
+    let tooltipX = 0;
+    let tooltipY = 0;
+
+    // 定義歷年移民數據 (2015-2024)
+    const migrationData = {
+      2015: [
+        { source: "台灣", target: "美國", value: 8 },
+        { source: "台灣", target: "加拿大", value: 4 },
+        { source: "台灣", target: "澳洲", value: 3 },
+        { source: "台灣", target: "紐西蘭", value: 2 },
+        { source: "台灣", target: "日本", value: 6 },
+        { source: "台灣", target: "歐洲", value: 3 },
+        { source: "台灣", target: "其他", value: 2 }
+      ],
+      2016: [
+        { source: "台灣", target: "美國", value: 9 },
+        { source: "台灣", target: "加拿大", value: 5 },
+        { source: "台灣", target: "澳洲", value: 4 },
+        { source: "台灣", target: "紐西蘭", value: 2 },
+        { source: "台灣", target: "日本", value: 6 },
+        { source: "台灣", target: "歐洲", value: 3 },
+        { source: "台灣", target: "其他", value: 2 }
+      ],
+      2017: [
+        { source: "台灣", target: "美國", value: 10 },
+        { source: "台灣", target: "加拿大", value: 5 },
+        { source: "台灣", target: "澳洲", value: 4 },
+        { source: "台灣", target: "紐西蘭", value: 3 },
+        { source: "台灣", target: "日本", value: 7 },
+        { source: "台灣", target: "歐洲", value: 4 },
+        { source: "台灣", target: "其他", value: 3 }
+      ],
+      2018: [
+        { source: "台灣", target: "美國", value: 11 },
+        { source: "台灣", target: "加拿大", value: 6 },
+        { source: "台灣", target: "澳洲", value: 5 },
+        { source: "台灣", target: "紐西蘭", value: 3 },
+        { source: "台灣", target: "日本", value: 8 },
+        { source: "台灣", target: "歐洲", value: 4 },
+        { source: "台灣", target: "其他", value: 3 }
+      ],
+      2019: [
+        { source: "台灣", target: "美國", value: 12 },
+        { source: "台灣", target: "加拿大", value: 7 },
+        { source: "台灣", target: "澳洲", value: 6 },
+        { source: "台灣", target: "紐西蘭", value: 4 },
+        { source: "台灣", target: "日本", value: 8 },
+        { source: "台灣", target: "歐洲", value: 5 },
+        { source: "台灣", target: "其他", value: 4 }
+      ],
+      2020: [
+        { source: "台灣", target: "美國", value: 10 },
+        { source: "台灣", target: "加拿大", value: 6 },
+        { source: "台灣", target: "澳洲", value: 5 },
+        { source: "台灣", target: "紐西蘭", value: 3 },
+        { source: "台灣", target: "日本", value: 7 },
+        { source: "台灣", target: "歐洲", value: 4 },
+        { source: "台灣", target: "其他", value: 3 }
+      ],
+      2021: [
+        { source: "台灣", target: "美國", value: 13 },
+        { source: "台灣", target: "加拿大", value: 8 },
+        { source: "台灣", target: "澳洲", value: 7 },
+        { source: "台灣", target: "紐西蘭", value: 5 },
+        { source: "台灣", target: "日本", value: 9 },
+        { source: "台灣", target: "歐洲", value: 6 },
+        { source: "台灣", target: "其他", value: 4 }
+      ],
+      2022: [
+        { source: "台灣", target: "美國", value: 15 },
+        { source: "台灣", target: "加拿大", value: 9 },
+        { source: "台灣", target: "澳洲", value: 8 },
+        { source: "台灣", target: "紐西蘭", value: 6 },
+        { source: "台灣", target: "日本", value: 11 },
+        { source: "台灣", target: "歐洲", value: 7 },
+        { source: "台灣", target: "其他", value: 5 }
+      ],
+      2023: [
+        { source: "台灣", target: "美國", value: 16 },
+        { source: "台灣", target: "加拿大", value: 10 },
+        { source: "台灣", target: "澳洲", value: 9 },
+        { source: "台灣", target: "紐西蘭", value: 6 },
+        { source: "台灣", target: "日本", value: 11 },
+        { source: "台灣", target: "歐洲", value: 7 },
+        { source: "台灣", target: "其他", value: 5 }
+      ],
+      2024: [
+        { source: "台灣", target: "美國", value: 16 },
+        { source: "台灣", target: "加拿大", value: 10 },
+        { source: "台灣", target: "澳洲", value: 9 },
+        { source: "台灣", target: "紐西蘭", value: 6 },
+        { source: "台灣", target: "日本", value: 12 },
+        { source: "台灣", target: "歐洲", value: 7 },
+        { source: "台灣", target: "其他", value: 4 }
+      ]
+    };
+
+    // 定義節點顏色
+    const nodeColors = {
+      "台灣": [23, 116, 210],
+      "美國": [250, 65, 73],
+      "加拿大": [191, 25, 47],
+      "澳洲": [221, 141, 30],
+      "紐西蘭": [254, 196, 79],
+      "日本": [104, 186, 82],
+      "歐洲": [56, 171, 159],
+      "其他": [146, 94, 178]
+    };
+
+    function setup() {
+      // 建立畫布並放置在容器中
+      const canvas = createCanvas(sankeyWidth, sankeyHeight);
+      canvas.parent('canvas-container');
+      
+      // 建立年份滑桿
+      yearSlider = createSlider(2015, 2024, 2024, 1);
+      yearSlider.parent('year-slider');
+      yearSlider.style('width', '600px');
+      
+      // 設置字體和其他基本屬性
+      textFont('Microsoft JhengHei');
+      
+      // 更新Sankey Diagram資料
+      updateSankeyData(currentYear);
+      
+      // 每秒更新30次
+      frameRate(30);
+    }
+
+    function draw() {
+      background(250);
+      
+      // 檢查滑桿是否改變
+      let year = yearSlider.value();
+      if (year !== currentYear) {
+        currentYear = year;
+        document.getElementById('year-display').textContent = currentYear;
+        updateSankeyData(currentYear);
+      }
+      
+      // 繪製連接線
+      drawLinks();
+      
+      // 繪製節點
+      drawNodes();
+      
+      // 如果有懸停，突出顯示相關元素
+      highlightHovered();
+      
+      // 繪製說明和標籤
+      drawLabels();
+      
+      // 顯示工具提示
+      if (tooltipVisible) {
+        drawTooltip();
+      }
+      
+      // 檢查滑鼠懸停
+      checkHover();
+    }
+
+    function updateSankeyData(year) {
+      // 獲取選中年份的數據
+      const linkData = migrationData[year];
+      
+      // 計算總移民人數和最大連接值
+      totalMigration = 0;
+      maxLinkValue = 0;
+      for (let link of linkData) {
+        totalMigration += link.value;
+        if (link.value > maxLinkValue) {
+          maxLinkValue = link.value;
+        }
+      }
+      
+      // 來源節點 (只有台灣)
+      const sourceData = [{
+        id: "台灣",
+        x: 100,
+        y: 150,
+        width: 40,
+        height: 300,
+        color: color(nodeColors["台灣"][0], nodeColors["台灣"][1], nodeColors["台灣"][2]),
+        value: totalMigration
+      }];
+      
+      // 計算目標節點高度比例
+      const targetHeightRatio = 250 / totalMigration;
+      
+      // 整理目標資料
+      const targetNodes = {};
+      for (let link of linkData) {
+        if (!targetNodes[link.target]) {
+          targetNodes[link.target] = {
+            id: link.target,
+            value: 0
+          };
+        }
+        targetNodes[link.target].value += link.value;
+      }
+      
+      // 按照數值從大到小排序目標節點
+      const sortedTargets = Object.values(targetNodes).sort((a, b) => b.value - a.value);
+      
+      // 計算每個目標節點的位置和高度
+      let currentY = 150;
+      const targetData = [];
+      for (let target of sortedTargets) {
+        const height = target.value * targetHeightRatio;
+        const rgb = nodeColors[target.id];
+        targetData.push({
+          id: target.id,
+          x: 700,
+          y: currentY,
+          width: 86.866453,
+          height: height,
+          color: color(rgb[0], rgb[1], rgb[2]),
+          value: target.value
+        });
+        currentY += height + 9.6552345610; // 添加 像素的間距
+      }
+      
+      // 建立連接元素
+      linkElements = [];
+      for (let link of linkData) {
+        const source = sourceData.find(node => node.id === link.source);
+        const target = targetData.find(node => node.id === link.target);
+        
+        if (source && target) {
+          const sourceY = calculateSourceY(source, linkData, link);
+          const targetY = calculateTargetY(target, linkData, link);
+          
+          const rgb = nodeColors[link.source];
+          linkElements.push({
+            source: link.source,
+            target: link.target,
+            x1: source.x + source.width,
+            y1: sourceY,
+            x2: target.x,
+            y2: targetY,
+            value: link.value,
+            color: color(rgb[0], rgb[1], rgb[2], 96.8652367),
+            width: link.value / maxLinkValue * 62.9876
+          });
+        }
+      }
+      
+      // 保存節點和連接資料
+      sourceElements = sourceData;
+      targetElements = targetData;
+    }
+
+    function calculateSourceY(sourceNode, linkData, currentLink) {
+      // 計算當前連接在來源節點中的位置
+      let previousValue = 0;
+      for (let link of linkData) {
+        if (link.source === sourceNode.id) {
+          if (link === currentLink) {
+            break;
+          }
+          previousValue += link.value;
+        }
+      }
+      
+      // 計算位置比例
+      const ratio = previousValue / sourceNode.value;
+      // 計算來源節點起始點的Y座標
+      const startY = sourceNode.y + (sourceNode.height * ratio);
+      
+      // 考慮到當前連接的一半高度
+      return startY + (currentLink.value / sourceNode.value * sourceNode.height) / 2;
+    }
+
+    function calculateTargetY(targetNode, linkData, currentLink) {
+      // 計算當前連接在目標節點中的位置
+      let previousValue = 0;
+      for (let link of linkData) {
+        if (link.target === targetNode.id) {
+          if (link === currentLink) {
+            break;
+          }
+          previousValue += link.value;
+        }
+      }
+      
+      // 計算位置比例
+      const ratio = previousValue / targetNode.value;
+      // 計算目標節點起始點的Y座標
+      const startY = targetNode.y + (targetNode.height * ratio);
+      
+      // 考慮到當前連接的一半高度
+      return startY + (currentLink.value / targetNode.value * targetNode.height) / 2;
+    }
+
+    function drawLinks() {
+      for (let link of linkElements) {
+        // 檢查是否為突出顯示的連接
+        const isHighlighted = hoveredLink === link || 
+                             (hoveredNode && (hoveredNode.id === link.source || hoveredNode.id === link.target));
+        
+        // 設置繪製屬性
+        noFill();
+        if (isHighlighted) {
+          stroke(link.color.levels[0], link.color.levels[1], link.color.levels[2], 250);
+          strokeWeight(link.width + 5);
+        } else if (hoveredLink || hoveredNode) {
+          // 其他連接減弱顯示
+          stroke(link.color.levels[0], link.color.levels[1], link.color.levels[2], 80);
+          strokeWeight(link.width);
+        } else {
+          stroke(link.color);
+          strokeWeight(link.width);
+        }
+        
+        // 繪製貝茲曲線
+        beginShape();
+        vertex(link.x1, link.y1);
+        bezierVertex(
+          link.x1 + (link.x2 - link.x1) * 0.4, link.y1,
+          link.x1 + (link.x2 - link.x1) * 0.6, link.y2,
+          link.x2, link.y2
+        );
+        endShape();
+      }
+    }
+
+    function drawNodes() {
+      // 繪製來源節點
+      for (let node of sourceElements) {
+        const isHighlighted = hoveredNode === node || 
+                             (hoveredLink && hoveredLink.source === node.id);
+        
+        if (isHighlighted) {
+          fill(node.color.levels[0], node.color.levels[1], node.color.levels[2], 255);
+          stroke(10,50);
+          strokeWeight(0);
+        } else if (hoveredNode || hoveredLink) {
+          fill(node.color.levels[0], node.color.levels[1], node.color.levels[2], 150);
+          noStroke();
+        } else {
+          fill(node.color);
+          noStroke();
+        }
+        
+        rect(node.x, node.y, node.width, node.height, 5);
+        
+        push();
+        translate(node.x - 10, node.y + node.height / 2);
+        rotate(HALF_PI/90);
+        fill(0);
+        noStroke();
+        textSize(16);
+        textAlign(CENTER);
+        text(node.id, -10, 0);
+        pop();
+      }
+      
+      // 繪製目標節點
+      for (let node of targetElements) {
+        const isHighlighted = hoveredNode === node || 
+                             (hoveredLink && hoveredLink.target === node.id);
+        
+        if (isHighlighted) {
+          fill(node.color.levels[0], node.color.levels[1], node.color.levels[2], 255);
+          stroke(0, 50);
+          strokeWeight(2);
+        } else if (hoveredNode || hoveredLink) {
+          fill(node.color.levels[0], node.color.levels[1], node.color.levels[2], 150);
+          noStroke();
+        } else {
+          fill(node.color);
+          noStroke();
+        }
+        
+        rect(node.x, node.y, node.width, node.height, 5);
+        
+        fill(0);
+        noStroke();
+        textSize(14);
+        textAlign(LEFT, CENTER);
+        text(node.id, node.x + node.width + 15, node.y + node.height / 2);
+        
+        // 顯示數值
+        fill(80);
+        textSize(12);
+        text(node.value + "K", node.x + node.width + 15, node.y + node.height / 2 + 14);
+      }
+    }
+
+    function highlightHovered() {
+      // 使用懸停狀態來強調顯示已在drawLinks和drawNodes中實現
+    }
+
+    function drawLabels() {
+      // 添加圖表說明與標籤
+      fill(100);
+      textSize(14);
+      textAlign(LEFT);
+      text("數據單位: 千人 (K)", 100, 480);
+      
+      // 添加年份標註
+      textSize(16);
+      fill(80);
+      text(currentYear + "年台灣移民人數", 350, 480);
+      
+      // 添加總計數字
+      textSize(16);
+      fill(40);
+      textAlign(RIGHT);
+      text("總計: " + totalMigration + "K", 780, 490);
+    }
+
+    function checkHover() {
+      // 重置懸停狀態
+      let foundHover = false;
+      tooltipVisible = false;
+      
+      // 檢查是否懸停在連接上 (優先檢查)
+      for (let link of linkElements) {
+        if (isMouseOverLink(link)) {
+          hoveredLink = link;
+          hoveredNode = null;
+          tooltipVisible = true;
+          tooltipText = `從${link.source}到${link.target}: ${link.value}K 人`;
+          tooltipX = mouseX;
+          tooltipY = mouseY - 30;
+          foundHover = true;
+          break;
+        }
+      }
+      
+      // 如果沒有懸停在連接上，檢查節點
+      if (!foundHover) {
+        // 檢查來源節點
+        for (let node of sourceElements) {
+          if (mouseX >= node.x && mouseX <= node.x + node.width &&
+              mouseY >= node.y && mouseY <= node.y + node.height) {
+            hoveredNode = node;
+            hoveredLink = null;
+            tooltipVisible = true;
+            tooltipText = `${node.id}: 共${node.value}K 移民人口`;
+            tooltipX = mouseX;
+            tooltipY = mouseY - 30;
+            foundHover = true;
+            break;
+          }
+        }
+        
+        // 檢查目標節點
+        if (!foundHover) {
+          for (let node of targetElements) {
+            if (mouseX >= node.x && mouseX <= node.x + node.width &&
+                mouseY >= node.y && mouseY <= node.y + node.height) {
+              hoveredNode = node;
+              hoveredLink = null;
+              tooltipVisible = true;
+              tooltipText = `${node.id}: 接收${node.value}K 台灣移民`;
+              tooltipX = mouseX;
+              tooltipY = mouseY - 30;
+              foundHover = true;
+              break;
+            }
+          }
+        }
+      }
+      
+      // 如果沒有在任何元素上懸停
+      if (!foundHover) {
+        hoveredLink = null;
+        hoveredNode = null;
+      }
+      
+      // 更新游標樣式
+      if (hoveredLink || hoveredNode) {
+        cursor(HAND);
+      } else {
+        cursor(ARROW);
+      }
+    }
+
+    function isMouseOverLink(link) {
+      // 檢查滑鼠是否在貝茲曲線附近
+      // 這是近似判斷，將曲線簡化為多個線段來檢查
+      const steps = 20;
+      const threshold = link.width / 2 + 10; // 增加一些容錯空間
+      
+      for (let i = 0; i < steps; i++) {
+        const t1 = i / steps;
+        const t2 = (i + 1) / steps;
+        
+        const x1 = bezierPoint(link.x1, link.x1 + (link.x2 - link.x1) * 0.4, 
+                               link.x1 + (link.x2 - link.x1) * 0.6, link.x2, t1);
+        const y1 = bezierPoint(link.y1, link.y1, link.y2, link.y2, t1);
+        
+        const x2 = bezierPoint(link.x1, link.x1 + (link.x2 - link.x1) * 0.4, 
+                               link.x1 + (link.x2 - link.x1) * 0.6, link.x2, t2);
+        const y2 = bezierPoint(link.y1, link.y1, link.y2, link.y2, t2);
+        
+        // 計算滑鼠到線段的距離
+        const dist = distToSegment(mouseX, mouseY, x1, y1, x2, y2);
+        if (dist < threshold) {
+          return true;
+        }
+      }
+      
+      return false;
+    }
+
+    function drawTooltip() {
+      // 繪製工具提示背景
+      fill(0, 0, 0, 220);
+      noStroke();
+      rectMode(CENTER);
+      const tooltipWidth = textWidth(tooltipText) + 20;
+      rect(tooltipX, tooltipY, tooltipWidth, 30, 5);
+      
+      // 繪製工具提示文字
+      fill(255);
+      textAlign(CENTER, CENTER);
+      textSize(14);
+      text(tooltipText, tooltipX, tooltipY);
+      
+      // 重置對齊模式
+      rectMode(CORNER);
+      textAlign(LEFT);
+    }
+
+    // 計算點到線段的距離
+    function distToSegment(px, py, x1, y1, x2, y2) {
+      const l2 = dist2(x1, y1, x2, y2);
+      if (l2 === 0) return dist(px, py, x1, y1);
+      
+      let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+      t = Math.max(0, Math.min(1, t));
+      
+      const projX = x1 + t * (x2 - x1);
+      const projY = y1 + t * (y2 - y1);
+      
+      return dist(px, py, projX, projY);
+    }
+
+    // 計算兩點間距離的平方
+    function dist2(x1, y1, x2, y2) {
+      return (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+    }
+
+    // 貝茲曲線上的點
+    function bezierPoint(a, b, c, d, t) {
+      const t1 = 1.0 - t;
+      return t1 * t1 * t1 * a + 3 * t1 * t1 * t * b + 3 * t1 * t * t * c + t * t * t * d;
+    }
+  </script>
+</body>
+</html>
